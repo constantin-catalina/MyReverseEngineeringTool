@@ -9,7 +9,7 @@ namespace assignment_3
             switch (format.ToLower())
             {
                 case "text":
-                    return new TextFormatter();
+                    return new TextFormatter(options);
                 case "yuml":
                     return new YumlFormatter(options);
                 case "plantuml":
