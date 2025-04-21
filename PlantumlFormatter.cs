@@ -57,67 +57,64 @@ namespace assignment_3
             // Add fields if enabled
             if (options.ShowAttributes)
             {
-                foreach (FieldModel field in type.Fields)
-                {
-                    string visibility = GetVisibilitySymbol(field.AccessModifier);
-                    string staticModifier = field.IsStatic ? "{static} " : "";
-                    plantUml.AppendLine($"  {visibility} {staticModifier}{field.TypeName} {field.Name}");
-                }
-
-                // Add properties
-                foreach (PropertyModel property in type.Properties)
-                {
-                    string visibility = GetVisibilitySymbol(property.AccessModifier);
-                    string staticModifier = property.IsStatic ? "{static} " : "";
-                    string accessors = property.HasGetter && property.HasSetter
-                        ? "get set"
-                        : property.HasGetter
-                            ? "get"
-                            : "set";
-                    plantUml.AppendLine($"  {visibility} {staticModifier}{property.TypeName} {property.Name} {{{accessors}}}");
-                }
+                AppendFields(plantUml, type);
+                AppendProperties(plantUml, type);
             }
 
             // Add methods if enabled
             if (options.ShowMethods)
             {
-                // Add constructors
-                foreach (ConstructorModel constructor in type.Constructors)
-                {
-                    string visibility = GetVisibilitySymbol(constructor.AccessModifier);
-                    string staticModifier = constructor.IsStatic ? "{static} " : "";
-
-                    StringBuilder paramList = new StringBuilder();
-                    foreach (ParameterModel param in constructor.Parameters)
-                    {
-                        if (paramList.Length > 0)
-                            paramList.Append(", ");
-                        paramList.Append($"{param.TypeName} {param.Name}");
-                    }
-
-                    plantUml.AppendLine($"  {visibility} {staticModifier}{type.Name}({paramList})");
-                }
-
-                // Add methods
-                foreach (MethodModel method in type.Methods)
-                {
-                    string visibility = GetVisibilitySymbol(method.AccessModifier);
-                    string staticModifier = method.IsStatic ? "{static} " : "";
-                    string abstractModifier = method.IsAbstract ? "{abstract} " : "";
-
-                    StringBuilder paramList = new StringBuilder();
-                    foreach (ParameterModel param in method.Parameters)
-                    {
-                        if (paramList.Length > 0)
-                            paramList.Append(", ");
-                        paramList.Append($"{param.TypeName} {param.Name}");
-                    }
-
-                    plantUml.AppendLine($"  {visibility} {staticModifier}{abstractModifier}{method.ReturnTypeName} {method.Name}({paramList})");
-                }
+                AppendConstructors(plantUml, type);
+                AppendMethods(plantUml, type);
             }
 
             plantUml.AppendLine("}");
+        }
+
+        private void AppendFields(StringBuilder plantUml, TypeModel type)
+        {
+            foreach (FieldModel field in type.Fields)
+            {
+                string visibility = GetVisibilitySymbol(field.AccessModifier);
+                string staticModifier = field.IsStatic ? "{static} " : "";
+                plantUml.AppendLine($"  {visibility} {staticModifier}{field.TypeName} {field.Name}");
+            }
+        }
+
+        private void AppendProperties(StringBuilder plantUml, TypeModel type)
+        {
+            foreach (PropertyModel property in type.Properties)
+            {
+                string visibility = GetVisibilitySymbol(property.AccessModifier);
+                string staticModifier = property.IsStatic ? "{static} " : "";
+                string accessors = GetPropertyAccessors(property);
+                plantUml.AppendLine($"  {visibility} {staticModifier} {property.TypeName} {property.Name} {{{accessors}}}");
+            }
+        }
+
+        private void AppendConstructors(StringBuilder plantUml, TypeModel type)
+        {
+            foreach (ConstructorModel constructor in type.Constructors)
+            {
+                string visibility = GetVisibilitySymbol(constructor.AccessModifier);
+                string staticModifier = constructor.IsStatic ? "{static} " : "";
+                string parameterList = GetParameterList(constructor.Parameters);
+
+                plantUml.AppendLine($"  {visibility} {staticModifier}{type.Name}({parameterList})");
+            }
+        }
+
+        private void AppendMethods(StringBuilder plantUml, TypeModel type)
+        {
+            foreach (MethodModel method in type.Methods)
+            {
+                string visibility = GetVisibilitySymbol(method.AccessModifier);
+                string staticModifier = method.IsStatic ? "{static} " : "";
+                string abstractModifier = method.IsAbstract ? "{abstract} " : "";
+                string parameterList = GetParameterList(method.Parameters);
+
+                plantUml.AppendLine($"  {visibility} {staticModifier} {abstractModifier} {method.ReturnTypeName} {method.Name}({parameterList})");
+            }
         }
 
         private void AppendRelationship(StringBuilder plantUml, RelationshipModel relationship)
@@ -163,6 +160,34 @@ namespace assignment_3
                 default:
                     return "-";
             }
+        }
+
+        private string GetPropertyAccessors(PropertyModel property)
+        {
+            if (property.HasGetter && property.HasSetter)
+            {
+                return "get set";
+            }
+            else if (property.HasGetter)
+            {
+                return "get";
+            }
+            else
+            {
+                return "set";
+            }
+        }
+
+        private string GetParameterList(List<ParameterModel> parameters)
+        {
+            StringBuilder paramList = new StringBuilder();
+            foreach (ParameterModel param in parameters)
+            {
+                if (paramList.Length > 0)
+                    paramList.Append(", ");
+                paramList.Append($"{param.TypeName} {param.Name}");
+            }
+            return paramList.ToString();
         }
     }
 }

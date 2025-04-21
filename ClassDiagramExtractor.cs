@@ -44,13 +44,32 @@ namespace assignment_3
             IEnumerable<Type> filteredTypes = types;
             if (options.IgnoredClasses != null && options.IgnoredClasses.Count > 0)
             {
-                filteredTypes = types.Where(t =>
-                                !options.IgnoredClasses.Any(ignore =>
-                                    string.Equals(t.Name, ignore, StringComparison.OrdinalIgnoreCase)
-                                    || string.Equals(t.FullName, ignore, StringComparison.OrdinalIgnoreCase)
-                                    || (t.Namespace != null && t.Namespace.StartsWith(ignore, StringComparison.OrdinalIgnoreCase))
-                                ));
+                List<Type> tempFilteredTypes = new List<Type>();
+
+                foreach (Type t in types)
+                {
+                    bool ignore = false;
+
+                    foreach (string ignoreClass in options.IgnoredClasses)
+                    {
+                        if (string.Equals(t.Name, ignoreClass, StringComparison.OrdinalIgnoreCase) ||
+                            string.Equals(t.FullName, ignoreClass, StringComparison.OrdinalIgnoreCase) ||
+                            (t.Namespace != null && t.Namespace.StartsWith(ignoreClass, StringComparison.OrdinalIgnoreCase)))
+                        {
+                            ignore = true;
+                            break;
+                        }
+                    }
+
+                    if (!ignore)
+                    {
+                        tempFilteredTypes.Add(t);
+                    }
+                }
+
+                filteredTypes = tempFilteredTypes;
             }
+
 
             foreach (Type type in filteredTypes)
             {
@@ -100,12 +119,9 @@ namespace assignment_3
             {
                 Type fieldType = field.FieldType;
 
-                // Skip primitive types, strings, and system types
-                if (fieldType.IsPrimitive || fieldType == typeof(string) ||
-                    fieldType.Namespace?.StartsWith("System") == true)
+                if (fieldType.IsPrimitive || fieldType == typeof(string))
                     continue;
 
-                // For collection types, get the element type
                 if (IsCollectionType(fieldType, out Type elementType))
                 {
                     fieldType = elementType;
@@ -124,18 +140,14 @@ namespace assignment_3
                 }
             }
 
-            // Properties that could represent associations
             PropertyInfo[] properties = type.GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly);
             foreach (PropertyInfo property in properties)
             {
                 Type propertyType = property.PropertyType;
 
-                // Skip primitive types, strings, and system types
-                if (propertyType.IsPrimitive || propertyType == typeof(string) ||
-                    propertyType.Namespace?.StartsWith("System") == true)
+                if (propertyType.IsPrimitive || propertyType == typeof(string))
                     continue;
 
-                // For collection types, get the element type
                 if (IsCollectionType(propertyType, out Type elementType))
                 {
                     propertyType = elementType;
@@ -157,17 +169,14 @@ namespace assignment_3
 
         private void AnalyzeDependencies(Type type)
         {
-            // Check method parameters and return types for dependencies
             MethodInfo[] methods = type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly);
 
             foreach (MethodInfo method in methods)
             {
-                // Check return type
                 Type returnType = method.ReturnType;
                 if (!returnType.IsPrimitive && returnType != typeof(void) &&
                     returnType != typeof(string) && returnType != type &&
-                    returnType.Assembly == assembly &&
-                    !returnType.Namespace?.StartsWith("System") == true)
+                    returnType.Assembly == assembly)
                 {
                     if (IsCollectionType(returnType, out Type elementType))
                     {
@@ -177,13 +186,11 @@ namespace assignment_3
                     AddDependency(type, returnType);
                 }
 
-                // Check parameters
                 foreach (ParameterInfo param in method.GetParameters())
                 {
                     Type paramType = param.ParameterType;
                     if (!paramType.IsPrimitive && paramType != typeof(string) &&
-                        paramType != type && paramType.Assembly == assembly &&
-                        !paramType.Namespace?.StartsWith("System") == true)
+                        paramType != type && paramType.Assembly == assembly)
                     {
                         if (IsCollectionType(paramType, out Type elementType))
                         {
@@ -198,10 +205,22 @@ namespace assignment_3
 
         private void AddDependency(Type source, Type target)
         {
-            // Don't add dependency if there's already a stronger relationship
-            if ((inheritanceRelationships.ContainsKey(source) && inheritanceRelationships[source].Contains(target)) ||
-                (implementationRelationships.ContainsKey(source) && implementationRelationships[source].Contains(target)) ||
-                (associationRelationships.ContainsKey(source) && associationRelationships[source].Contains(target)))
+            bool hasStrongerRelationship = false;
+
+            if (inheritanceRelationships.ContainsKey(source) && inheritanceRelationships[source].Contains(target))
+            {
+                hasStrongerRelationship = true;
+            }
+            else if (implementationRelationships.ContainsKey(source) && implementationRelationships[source].Contains(target))
+            {
+                hasStrongerRelationship = true;
+            }
+            else if (associationRelationships.ContainsKey(source) && associationRelationships[source].Contains(target))
+            {
+                hasStrongerRelationship = true;
+            }
+
+            if (hasStrongerRelationship)
             {
                 return;
             }
@@ -221,13 +240,11 @@ namespace assignment_3
         {
             elementType = null;
 
-            // Check if it's a generic collection
             if (type.IsGenericType)
             {
                 Type[] genericArgs = type.GetGenericArguments();
                 if (genericArgs.Length > 0)
                 {
-                    // Check for common collection interfaces
                     Type genericTypeDefinition = type.GetGenericTypeDefinition();
                     if (genericTypeDefinition == typeof(List<>) ||
                         genericTypeDefinition == typeof(IList<>) ||
@@ -241,7 +258,6 @@ namespace assignment_3
                     }
                 }
             }
-            // Check if it's an array
             else if (type.IsArray)
             {
                 elementType = type.GetElementType();
@@ -253,7 +269,6 @@ namespace assignment_3
 
         private void AddRelationships(DiagramModel model)
         {
-            // Add inheritance relationships
             foreach (var pair in inheritanceRelationships)
             {
                 foreach (var baseType in pair.Value)
@@ -267,7 +282,6 @@ namespace assignment_3
                 }
             }
 
-            // Add implementation relationships
             foreach (var pair in implementationRelationships)
             {
                 foreach (var interfaceType in pair.Value)
@@ -281,7 +295,6 @@ namespace assignment_3
                 }
             }
 
-            // Add association relationships
             foreach (var pair in associationRelationships)
             {
                 foreach (var targetType in pair.Value)
@@ -295,7 +308,6 @@ namespace assignment_3
                 }
             }
 
-            // Add dependency relationships
             foreach (var pair in dependencyRelationships)
             {
                 foreach (var targetType in pair.Value)
@@ -325,7 +337,6 @@ namespace assignment_3
                 IsInterface = type.IsInterface
             };
 
-            // Add properties
             if (options.ShowAttributes)
             {
                 PropertyInfo[] properties = type.GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly);
@@ -345,7 +356,6 @@ namespace assignment_3
                     typeModel.Properties.Add(propModel);
                 }
 
-                // Add fields
                 FieldInfo[] fields = type.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly);
                 foreach (FieldInfo field in fields)
                 {
@@ -363,7 +373,6 @@ namespace assignment_3
                 }
             }
 
-            // Add constructors
             ConstructorInfo[] constructors = type.GetConstructors(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly);
             foreach (ConstructorInfo constructor in constructors)
             {
@@ -386,13 +395,11 @@ namespace assignment_3
                 typeModel.Constructors.Add(ctorModel);
             }
 
-            // Add methods
             if (options.ShowMethods)
             {
                 MethodInfo[] methods = type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly);
                 foreach (MethodInfo method in methods)
                 {
-                    // Skip property accessors
                     if (method.IsSpecialName && (method.Name.StartsWith("get_") || method.Name.StartsWith("set_")))
                         continue;
 

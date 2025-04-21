@@ -19,13 +19,11 @@ namespace assignment_3
         {
             StringBuilder yumlCode = new StringBuilder();
 
-            // Define classes and interfaces first
             foreach (TypeModel type in model.Types)
             {
                 AppendTypeDefinition(yumlCode, type);
             }
 
-            // Then add relationships
             foreach (RelationshipModel relationship in model.Relationships)
             {
                 AppendRelationship(yumlCode, relationship);
@@ -38,11 +36,9 @@ namespace assignment_3
         {
             string typeName = type.Name;
 
-            // Format: [ClassName|+attribute1:type;-attribute2:type|+method1():returnType;#method2():returnType]
             StringBuilder typeDefinition = new StringBuilder();
             typeDefinition.Append('[');
 
-            // Add stereotype for interfaces
             if (type.IsInterface)
             {
                 typeDefinition.Append("<<interface>>");
@@ -50,80 +46,82 @@ namespace assignment_3
 
             typeDefinition.Append(typeName);
 
-            // Add attributes if enabled
-            if (options.ShowAttributes && (type.Properties.Count > 0 || type.Fields.Count > 0))
+            // Add attributes and methods if enabled
+            if (options.ShowAttributes || options.ShowMethods)
             {
                 typeDefinition.Append('|');
 
-                // Add fields
-                foreach (FieldModel field in type.Fields)
+                if (options.ShowAttributes)
                 {
-                    string visibility = GetVisibilitySymbol(field.AccessModifier);
-                    typeDefinition.Append($"{visibility}{field.Name}:{field.TypeName};");
+                    AppendFieldsAndProperties(typeDefinition, type);
                 }
 
-                // Add properties
-                foreach (PropertyModel property in type.Properties)
+                if (options.ShowMethods)
                 {
-                    string visibility = GetVisibilitySymbol(property.AccessModifier);
-                    typeDefinition.Append($"{visibility}{property.Name}:{property.TypeName};");
-                }
-
-                // Remove the last semicolon
-                if (typeDefinition[typeDefinition.Length - 1] == ';')
-                {
-                    typeDefinition.Length--;
-                }
-            }
-
-            // Add methods if enabled
-            if (options.ShowMethods && (type.Methods.Count > 0 || type.Constructors.Count > 0))
-            {
-                typeDefinition.Append('|');
-
-                // Add constructors
-                foreach (ConstructorModel ctor in type.Constructors)
-                {
-                    string visibility = GetVisibilitySymbol(ctor.AccessModifier);
-                    typeDefinition.Append($"{visibility}{type.Name}(");
-
-                    // Add parameters
-                    List<string> paramStrings = new List<string>();
-                    foreach (ParameterModel param in ctor.Parameters)
-                    {
-                        paramStrings.Add($"{param.Name}:{param.TypeName}");
-                    }
-                    typeDefinition.Append(string.Join(", ", paramStrings));
-
-                    typeDefinition.Append(");");
-                }
-
-                // Add methods
-                foreach (MethodModel method in type.Methods)
-                {
-                    string visibility = GetVisibilitySymbol(method.AccessModifier);
-                    typeDefinition.Append($"{visibility}{method.Name}(");
-
-                    // Add parameters
-                    List<string> paramStrings = new List<string>();
-                    foreach (ParameterModel param in method.Parameters)
-                    {
-                        paramStrings.Add($"{param.Name}:{param.TypeName}");
-                    }
-                    typeDefinition.Append(string.Join(", ", paramStrings));
-
-                    typeDefinition.Append($"):{method.ReturnTypeName};");
-                }
-
-                // Remove the last semicolon
-                if (typeDefinition[typeDefinition.Length - 1] == ';')
-                {
-                    typeDefinition.Length--;
+                    AppendMethodsAndConstructors(typeDefinition, type);
                 }
             }
 
             typeDefinition.Append(']');
             yumlCode.AppendLine(typeDefinition.ToString());
+        }
+
+        private void AppendFieldsAndProperties(StringBuilder typeDefinition, TypeModel type)
+        {
+            // Add fields
+            foreach (FieldModel field in type.Fields)
+            {
+                string visibility = GetVisibilitySymbol(field.AccessModifier);
+                typeDefinition.Append($"{visibility}{field.Name}:{field.TypeName};");
+            }
+
+            // Add properties
+            foreach (PropertyModel property in type.Properties)
+            {
+                string visibility = GetVisibilitySymbol(property.AccessModifier);
+                typeDefinition.Append($"{visibility}{property.Name}:{property.TypeName};");
+            }
+
+            // Remove the last semicolon
+            if (typeDefinition[typeDefinition.Length - 1] == ';')
+            {
+                typeDefinition.Length--;
+            }
+        }
+
+        private void AppendMethodsAndConstructors(StringBuilder typeDefinition, TypeModel type)
+        {
+            // Add constructors
+            foreach (ConstructorModel ctor in type.Constructors)
+            {
+                string visibility = GetVisibilitySymbol(ctor.AccessModifier);
+                typeDefinition.Append($"{visibility}{type.Name}(");
+
+                // Add parameters
+                string parameterList = GetParameterList(ctor.Parameters);
+                typeDefinition.Append(parameterList);
+
+                typeDefinition.Append(");");
+            }
+
+            // Add methods
+            foreach (MethodModel method in type.Methods)
+            {
+                string visibility = GetVisibilitySymbol(method.AccessModifier);
+                typeDefinition.Append($"{visibility}{method.Name}(");
+
+                // Add parameters
+                string parameterList = GetParameterList(method.Parameters);
+                typeDefinition.Append(parameterList);
+
+                typeDefinition.Append($"):{method.ReturnTypeName};");
+            }
+
+            // Remove the last semicolon
+            if (typeDefinition[typeDefinition.Length - 1] == ';')
+            {
+                typeDefinition.Length--;
+            }
         }
 
         private void AppendRelationship(StringBuilder yumlCode, RelationshipModel relationship)
@@ -169,6 +167,18 @@ namespace assignment_3
                 default:
                     return "-";
             }
+        }
+
+        private string GetParameterList(List<ParameterModel> parameters)
+        {
+            StringBuilder paramList = new StringBuilder();
+            foreach (ParameterModel param in parameters)
+            {
+                if (paramList.Length > 0)
+                    paramList.Append(", ");
+                paramList.Append($"{param.Name}:{param.TypeName}");
+            }
+            return paramList.ToString();
         }
     }
 }
